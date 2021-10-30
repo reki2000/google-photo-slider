@@ -5,7 +5,11 @@
       <map>
         <entry key="..\:/Users/reki/git/google-photo-slider/app/src/main/res/drawable-v24/ic_launcher_foreground.xml" value="0.23489583333333333" />
         <entry key="..\:/Users/reki/git/google-photo-slider/app/src/main/res/drawable/ic_launcher_background.xml" value="0.23489583333333333" />
+        <entry key="..\:/Users/reki/git/google-photo-slider/app/src/main/res/layout/activity_album_select.xml" value="0.2" />
         <entry key="..\:/Users/reki/git/google-photo-slider/app/src/main/res/layout/activity_fullscreen.xml" value="0.22" />
+        <entry key="..\:/Users/reki/git/google-photo-slider/app/src/main/res/layout/fragment_first.xml" value="0.20260416666666667" />
+        <entry key="..\:/Users/reki/git/google-photo-slider/app/src/main/res/layout/fragment_second.xml" value="0.20260416666666667" />
+        <entry key="..\:/Users/reki/git/google-photo-slider/app/src/main/res/layout/view_album_select_item.xml" value="0.23697916666666666" />
         <entry key="..\:/Users/reki/git/google-photo-slider/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml" value="0.23489583333333333" />
       </map>
     </option>
