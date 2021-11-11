@@ -53,7 +53,7 @@ class GooglePhotoApi {
         albums
     }
 
-    suspend fun getNextMediaItems(albumId: String): List<MediaItem> = withContext(
+    private suspend fun getNextMediaItems(albumId: String): List<MediaItem> = withContext(
         Dispatchers.IO
     ) {
         val client = OkHttpClient()
@@ -86,6 +86,17 @@ class GooglePhotoApi {
 
         mediaItems
     }
+
+    suspend fun getAllMediaItems(albumId: String) : List<MediaItem> {
+        var list = listOf<MediaItem>()
+        do {
+            list += getNextMediaItems(albumId)
+            if (list.size > 1000) {
+                break // リスト全取得にかなり時間がかかるので一旦最新1000件に絞る
+            }
+        } while (nextPageToken != null)
+        return list
+    }
 }
 
 @Serializable
@@ -116,4 +127,10 @@ data class MediaItem(
     val productUrl: String,
     val baseUrl: String = "",
     val mimeType: String = "",
+    val mediaMetadata: MediaMetadata,
+)
+
+@Serializable
+data class MediaMetadata(
+    val creationTime: String = "",
 )

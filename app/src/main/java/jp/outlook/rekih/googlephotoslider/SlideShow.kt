@@ -17,15 +17,38 @@ class SlideShow : ViewModel() {
     val albumName = "家族"
 
     var movieEnded = false
+    var interrupted = false
 
     val showImage: MutableLiveData<Bitmap> by lazy { MutableLiveData<Bitmap>() }
     val startBrowser: MutableLiveData<String> by lazy { MutableLiveData<String>() }
     val startMovie: MutableLiveData<String> by lazy { MutableLiveData<String>() }
     val prepareMovie: MutableLiveData<String> by lazy { MutableLiveData<String>() }
 
-    private val items = mutableListOf<MediaItem>()
     private val oauth = OAuth()
     private val api = GooglePhotoApi()
+
+    private lateinit var mediaList: MediaList
+
+    private fun interrupt() {
+        interrupted = true
+    }
+
+    fun forward() {
+        mediaList.next()
+        interrupt()
+    }
+    fun rewind() {
+        mediaList.prev()
+        interrupt()
+    }
+    fun forwardMuch() {
+        mediaList.nextDate()
+        interrupt()
+    }
+    fun rewindMuch() {
+        mediaList.prevDate()
+        interrupt()
+    }
 
     fun start() {
         viewModelScope.launch {
@@ -39,39 +62,54 @@ class SlideShow : ViewModel() {
 
             val albums = api.getAlbumList() // todo: アルバムがない場合の処理
             val albumId = albums.first { it.title == albumName }.id
+            mediaList = MediaList(api.getAllMediaItems(albumId)) // todo: アルバムが空の場合の処理
 
-            var waitForContents = suspend { }
-            val waitForMovie = suspend {
-                while (!movieEnded) { // FullscreenActivity 側で再生終了で true になる
-                    delay(100)
-                }
-                movieEnded  = false
-            }
-            val waitForImage = suspend {
-                delay(3000)
-            }
+            var waitForContents: suspend () -> MediaItem = { mediaList.next() }
+            var item = mediaList.current()
             while (true) {
-                val item = nextMediaItem(albumId)
                 val isVideo = MimeTypes.isVideo(item.mimeType)
 
                 Log.i("SlideShow", "showing URL: ${item.mimeType} ${item.baseUrl}")
                 if (isVideo) {
                     prepareMovie.value = item.baseUrl
 
-                    waitForContents()
+                    item = waitForContents()
 
-                    startMovie.value = item.baseUrl
+                    startMovie.value = ""
                     waitForContents = waitForMovie
                 } else {
                     val bitmap = loadImageBitmap(item.baseUrl)
 
-                    waitForContents()
+                    item = waitForContents()
 
                     showImage.value = bitmap // update image
                     waitForContents = waitForImage
                 }
             }
         }
+    }
+
+    private val waitForMovie: suspend () -> MediaItem = {
+        while (!movieEnded) { // FullscreenActivity 側で再生終了で movieEnded == true になる
+            delay(100)
+            if (interrupted) break
+        }
+        movieEnded  = false
+        if (interrupted) {
+            interrupted = false
+            mediaList.current()
+        } else mediaList.next()
+    }
+
+    private val waitForImage: suspend () -> MediaItem = {
+        for (i in 0..29) {
+            delay(100)
+            if (interrupted) break
+        }
+        if (interrupted) {
+            interrupted = false
+            mediaList.current()
+        } else mediaList.next()
     }
 
     private suspend fun loadImageBitmap(url: String): Bitmap = withContext(Dispatchers.IO){
@@ -81,13 +119,5 @@ class SlideShow : ViewModel() {
 //        Log.i("SlideShow", "read ${ba.size} bytes [0]:${ba[0]}")
         val bitmap = BitmapFactory.decodeByteArray(ba, 0, ba.size)
         bitmap
-    }
-
-    private suspend fun nextMediaItem(albumId: String) : MediaItem {
-        if (items.isEmpty()) {
-            val mediaItems = api.getNextMediaItems(albumId)
-            items += mediaItems
-        }
-        return items.removeFirst()
     }
 }

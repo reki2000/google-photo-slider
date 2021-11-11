@@ -4,6 +4,7 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.View
 import android.widget.ImageView
 import androidx.activity.viewModels
@@ -24,10 +25,6 @@ class FullscreenActivity : AppCompatActivity() {
     private lateinit var currentImageView: ImageView
 
     // TODO: 画面をクリックしてもタイトルバーを出さないようにする
-    // TODO: 右ボタンで早送り、最後まで行ったらアルバムを再読み込みして最初から
-    // TODO: 左ボタンで巻き戻し (先頭まで行ったらアルバム内容を再読み込み）
-    // TODO: 上ボタンで今のコンテンツの日付の前の日付の最初のコンテンツにセット、前の日付がなければアルバムを再読み込みする
-    // TODO: 下ボタンで今のコンテンツの日付の次の日付の最初のコンテンツにセット、、最後まで行ったらアルバムを再読み込みして最初から
     // TODO: 縦長の写真のみ、設定値に基づいてズームして表示 ZOOM_FOR_PORTLAIT = 1.3 など
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -74,10 +71,32 @@ class FullscreenActivity : AppCompatActivity() {
         slideShow.prepareMovie.observe(this, prepareMovie)
 
         // スプラッシュ画像消去
-        binding.fullscreenContent.setImageResource(0)
+        //binding.fullscreenContent.setImageResource(0)
 
         // スライドショー開始
         slideShow.start()
+    }
+
+    override fun onKeyDown(keyCode:Int, event: KeyEvent): Boolean {
+        return when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                slideShow.forward()
+                true
+            }
+            KeyEvent.KEYCODE_DPAD_DOWN -> {
+                slideShow.forwardMuch()
+                true
+            }
+            KeyEvent.KEYCODE_DPAD_LEFT -> {
+                slideShow.rewind()
+                true
+            }
+            KeyEvent.KEYCODE_DPAD_UP -> {
+                slideShow.rewindMuch()
+                true
+            }
+            else -> super.onKeyUp(keyCode, event)
+        }
     }
 
     private val startBrowser = Observer<String> { url ->
@@ -86,6 +105,7 @@ class FullscreenActivity : AppCompatActivity() {
 
     private val showImage = Observer<Bitmap> { bitmap ->
         binding.playerView.visibility = View.INVISIBLE
+        player.stop()
 
         nextImageView.apply {
             setImageBitmap(bitmap)
@@ -117,6 +137,7 @@ class FullscreenActivity : AppCompatActivity() {
         binding.fullscreenContent.visibility = View.INVISIBLE
         binding.fullscreenContent2.visibility = View.INVISIBLE
         currentImageView.setImageResource(0)
+        nextImageView.setImageResource(0)
 
         binding.playerView.visibility = View.VISIBLE
         player.apply {
