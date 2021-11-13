@@ -91,8 +91,8 @@ class GooglePhotoApi {
         var list = listOf<MediaItem>()
         do {
             list += getNextMediaItems(albumId)
-            if (list.size > 1000) {
-                break // リスト全取得にかなり時間がかかるので一旦最新1000件に絞る
+            if (list.size > 500) {
+                break // リスト全取得にかなり時間がかかるので一旦最新500件に絞る
             }
         } while (nextPageToken != null)
         return list

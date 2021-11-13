@@ -18,6 +18,8 @@ class SlideShow : ViewModel() {
 
     var movieEnded = false
     var interrupted = false
+    var running = false
+    var ready = false
 
     val showImage: MutableLiveData<Bitmap> by lazy { MutableLiveData<Bitmap>() }
     val startBrowser: MutableLiveData<String> by lazy { MutableLiveData<String>() }
@@ -50,7 +52,12 @@ class SlideShow : ViewModel() {
         interrupt()
     }
 
-    fun start() {
+    fun stop() {
+        running = false
+        interrupt()
+    }
+
+    fun prepare() {
         viewModelScope.launch {
             // todo: 認証が必要な時は ブラウザ起動してOAuth認証する旨の案内画面とボタンを表示する
             if (oauth.isAuthorizeRequired()) {
@@ -63,10 +70,19 @@ class SlideShow : ViewModel() {
             val albums = api.getAlbumList() // todo: アルバムがない場合の処理
             val albumId = albums.first { it.title == albumName }.id
             mediaList = MediaList(api.getAllMediaItems(albumId)) // todo: アルバムが空の場合の処理
+            ready = true
+        }
+    }
 
+    fun start() {
+        viewModelScope.launch {
+            while (!ready) {
+                delay(100)
+            }
+            running = true
             var waitForContents: suspend () -> MediaItem = { mediaList.next() }
             var item = mediaList.current()
-            while (true) {
+            while (running) {
                 val isVideo = MimeTypes.isVideo(item.mimeType)
 
                 Log.i("SlideShow", "showing URL: ${item.mimeType} ${item.baseUrl}")

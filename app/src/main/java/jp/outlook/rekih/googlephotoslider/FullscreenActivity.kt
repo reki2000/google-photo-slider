@@ -74,6 +74,18 @@ class FullscreenActivity : AppCompatActivity() {
         //binding.fullscreenContent.setImageResource(0)
 
         // スライドショー開始
+        slideShow.prepare()
+        slideShow.start()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        player.stop()
+        slideShow.stop()
+    }
+
+    override fun onRestart() {
+        super.onRestart()
         slideShow.start()
     }
 
