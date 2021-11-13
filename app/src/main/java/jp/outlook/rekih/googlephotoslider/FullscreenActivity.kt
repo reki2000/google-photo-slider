@@ -24,7 +24,6 @@ class FullscreenActivity : AppCompatActivity() {
     private lateinit var nextImageView: ImageView
     private lateinit var currentImageView: ImageView
 
-    // TODO: 画面をクリックしてもタイトルバーを出さないようにする
     // TODO: 縦長の写真のみ、設定値に基づいてズームして表示 ZOOM_FOR_PORTLAIT = 1.3 など
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,14 +33,8 @@ class FullscreenActivity : AppCompatActivity() {
         Preference.init(applicationContext)
 
         binding = ActivityFullscreenBinding.inflate(layoutInflater)
-        val activityFullscreen = binding.root
-        setContentView(activityFullscreen)
-        activityFullscreen.systemUiVisibility =
-            View.SYSTEM_UI_FLAG_FULLSCREEN or
-            View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-            View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
-            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
-            View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+        setContentView(binding.root)
+        hideSystemUI()
 
         currentImageView = binding.fullscreenContent
         nextImageView = binding.fullscreenContent2
@@ -62,6 +55,7 @@ class FullscreenActivity : AppCompatActivity() {
             stop()
             clearMediaItems()
         }
+        binding.playerView.useController = false
         binding.playerView.player = player
 
         // viewModelの変更を監視（本質はSlideShowからのUIに対するコマンドの受信）
@@ -86,7 +80,19 @@ class FullscreenActivity : AppCompatActivity() {
 
     override fun onRestart() {
         super.onRestart()
+        hideSystemUI()
         slideShow.start()
+    }
+
+    private fun hideSystemUI() {
+        val activityFullscreen = binding.root
+        activityFullscreen.systemUiVisibility =
+            View.SYSTEM_UI_FLAG_FULLSCREEN or
+                    View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                    View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                    View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
+                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+
     }
 
     override fun onKeyDown(keyCode:Int, event: KeyEvent): Boolean {
@@ -116,6 +122,7 @@ class FullscreenActivity : AppCompatActivity() {
     }
 
     private val showImage = Observer<Pair<Bitmap,String>> { (bitmap, caption) ->
+        hideSystemUI()
         binding.playerView.visibility = View.INVISIBLE
         player.stop()
 
@@ -129,6 +136,7 @@ class FullscreenActivity : AppCompatActivity() {
             alpha = 1f
             animate().alpha(0f).setDuration(500);
         }
+        binding.dateText.visibility = View.VISIBLE
         nextImageView.visibility = View.VISIBLE
         currentImageView.visibility = View.VISIBLE
 
@@ -147,8 +155,10 @@ class FullscreenActivity : AppCompatActivity() {
     }
 
     private val startMovie = Observer<String> { _ ->
+        hideSystemUI()
         binding.fullscreenContent.visibility = View.INVISIBLE
         binding.fullscreenContent2.visibility = View.INVISIBLE
+        binding.dateText.visibility = View.INVISIBLE
         currentImageView.setImageResource(0)
         nextImageView.setImageResource(0)
 
