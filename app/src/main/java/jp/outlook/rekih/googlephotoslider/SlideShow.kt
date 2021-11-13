@@ -36,20 +36,28 @@ class SlideShow : ViewModel() {
     }
 
     fun forward() {
-        mediaList.next()
-        interrupt()
+        viewModelScope.launch {
+            mediaList.next()
+            interrupt()
+        }
     }
     fun rewind() {
-        mediaList.prev()
-        interrupt()
+        viewModelScope.launch {
+            mediaList.prev()
+            interrupt()
+        }
     }
     fun forwardMuch() {
-        mediaList.nextDate()
-        interrupt()
+        viewModelScope.launch {
+            mediaList.nextDate()
+            interrupt()
+        }
     }
     fun rewindMuch() {
-        mediaList.prevDate()
-        interrupt()
+        viewModelScope.launch {
+            mediaList.prevDate()
+            interrupt()
+        }
     }
 
     fun stop() {
@@ -69,7 +77,7 @@ class SlideShow : ViewModel() {
 
             val albums = api.getAlbumList() // todo: アルバムがない場合の処理
             val albumId = albums.first { it.title == albumName }.id
-            mediaList = MediaList(api.getAllMediaItems(albumId)) // todo: アルバムが空の場合の処理
+            mediaList = MediaList({ api.getNextMediaItems(albumId) }) // todo: アルバムが空の場合の処理
             ready = true
         }
     }

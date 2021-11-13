@@ -20,6 +20,7 @@ class GooglePhotoApi {
 
     private val MEDIA_ITEMS_FETCH_SIZE = 100
     private var nextPageToken: String? = null
+    private var completed = false
 
     fun setAccessToken(token :String): GooglePhotoApi {
         accessToken = token
@@ -53,49 +54,43 @@ class GooglePhotoApi {
         albums
     }
 
-    private suspend fun getNextMediaItems(albumId: String): List<MediaItem> = withContext(
+    suspend fun getNextMediaItems(albumId: String): List<MediaItem> = withContext(
         Dispatchers.IO
     ) {
-        val client = OkHttpClient()
-        val url = "https://photoslibrary.googleapis.com/v1/mediaItems:search".toHttpUrlOrNull()!!
         val mediaItems = mutableListOf<MediaItem>()
 
-        val query = buildJsonObject {
-            put("albumId", albumId)
-            put("pageSize", MEDIA_ITEMS_FETCH_SIZE)
-            if (nextPageToken != null) {
-                put("pageToken", nextPageToken)
+        if (!completed) {
+            val client = OkHttpClient()
+            val url =
+                "https://photoslibrary.googleapis.com/v1/mediaItems:search".toHttpUrlOrNull()!!
+            val query = buildJsonObject {
+                put("albumId", albumId)
+                put("pageSize", MEDIA_ITEMS_FETCH_SIZE)
+                if (nextPageToken != null) {
+                    put("pageToken", nextPageToken)
+                }
             }
-        }
-        val body =
-            query.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
-        val req = Request.Builder()
-            .url(url)
-            .addHeader("Authorization", "Bearer $accessToken")
-            .post(body)
-            .build()
-        val response = client.newCall(req).execute()
+            val body =
+                query.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
+            val req = Request.Builder()
+                .url(url)
+                .addHeader("Authorization", "Bearer $accessToken")
+                .post(body)
+                .build()
+            val response = client.newCall(req).execute()
 
-        val responseBody = response.body?.string() ?: ""
+            val responseBody = response.body?.string() ?: ""
 //            Log.i("OAuth", "got mediaItems: $response $responseBody")
-        val json = decoder.decodeFromString<MediaItems>(responseBody)
+            val json = decoder.decodeFromString<MediaItems>(responseBody)
 
-        mediaItems += json.mediaItems
-        nextPageToken = json.nextPageToken
-        Log.i("Api", "got ${json.mediaItems.size} items, nextpagetoken ${nextPageToken}")
-
-        mediaItems
-    }
-
-    suspend fun getAllMediaItems(albumId: String) : List<MediaItem> {
-        var list = listOf<MediaItem>()
-        do {
-            list += getNextMediaItems(albumId)
-            if (list.size > 500) {
-                break // リスト全取得にかなり時間がかかるので一旦最新500件に絞る
+            mediaItems += json.mediaItems
+            nextPageToken = json.nextPageToken
+            if (nextPageToken == null) {
+                completed = true
             }
-        } while (nextPageToken != null)
-        return list
+            Log.i("Api", "got ${json.mediaItems.size} items, nextpagetoken ${nextPageToken}")
+        }
+        mediaItems
     }
 }
 
