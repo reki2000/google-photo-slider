@@ -21,7 +21,7 @@ class SlideShow : ViewModel() {
     var running = false
     var ready = false
 
-    val showImage: MutableLiveData<Bitmap> by lazy { MutableLiveData<Bitmap>() }
+    val showImage: MutableLiveData<Pair<Bitmap,String>> by lazy { MutableLiveData<Pair<Bitmap,String>>() }
     val startBrowser: MutableLiveData<String> by lazy { MutableLiveData<String>() }
     val startMovie: MutableLiveData<String> by lazy { MutableLiveData<String>() }
     val prepareMovie: MutableLiveData<String> by lazy { MutableLiveData<String>() }
@@ -98,7 +98,7 @@ class SlideShow : ViewModel() {
 
                     item = waitForContents()
 
-                    showImage.value = bitmap // update image
+                    showImage.value = Pair(bitmap, item.mediaMetadata.creationTime) // update image
                     waitForContents = waitForImage
                 }
             }

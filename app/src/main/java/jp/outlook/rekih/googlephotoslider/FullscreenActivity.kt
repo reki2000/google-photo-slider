@@ -115,10 +115,11 @@ class FullscreenActivity : AppCompatActivity() {
         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
     }
 
-    private val showImage = Observer<Bitmap> { bitmap ->
+    private val showImage = Observer<Pair<Bitmap,String>> { (bitmap, caption) ->
         binding.playerView.visibility = View.INVISIBLE
         player.stop()
 
+        binding.dateText.text = caption
         nextImageView.apply {
             setImageBitmap(bitmap)
             alpha = 0f
