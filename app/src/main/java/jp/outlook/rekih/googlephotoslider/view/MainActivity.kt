@@ -1,4 +1,4 @@
-package jp.outlook.rekih.googlephotoslider
+package jp.outlook.rekih.googlephotoslider.view
 
 import android.content.Intent
 import android.graphics.Bitmap
@@ -13,8 +13,10 @@ import androidx.lifecycle.Observer
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.SimpleExoPlayer
 import jp.outlook.rekih.googlephotoslider.databinding.ActivityFullscreenBinding
+import jp.outlook.rekih.googlephotoslider.repository.Preference
+import jp.outlook.rekih.googlephotoslider.viewmodel.SlideShow
 
-class FullscreenActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity() {
 
     private val slideShow : SlideShow by viewModels()
 

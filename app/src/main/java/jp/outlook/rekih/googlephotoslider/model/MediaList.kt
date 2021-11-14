@@ -1,4 +1,6 @@
-package jp.outlook.rekih.googlephotoslider
+package jp.outlook.rekih.googlephotoslider.model
+
+import jp.outlook.rekih.googlephotoslider.model.MediaItem
 
 class MediaList(val fetchNext: suspend () -> List<MediaItem>) {
     private var itemIndex = 0

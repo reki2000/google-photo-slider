@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:background="#000000"
     android:keepScreenOn="true"
-    tools:context=".FullscreenActivity">
+    tools:context=".view.MainActivity">
 
     <!-- The primary full-screen view. This can be replaced with whatever view
          is needed to present your content, e.g. VideoView, SurfaceView,
