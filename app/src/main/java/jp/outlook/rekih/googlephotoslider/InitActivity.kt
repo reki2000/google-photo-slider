@@ -4,6 +4,9 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import jp.outlook.rekih.googlephotoslider.data.GooglePhotoApi
+import jp.outlook.rekih.googlephotoslider.data.OAuth
+import jp.outlook.rekih.googlephotoslider.data.Preference
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

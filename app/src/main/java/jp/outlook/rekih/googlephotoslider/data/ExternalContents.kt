@@ -1,4 +1,4 @@
-package jp.outlook.rekih.googlephotoslider.repository
+package jp.outlook.rekih.googlephotoslider.data
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory

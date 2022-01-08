@@ -1,6 +1,7 @@
-package jp.outlook.rekih.googlephotoslider
+package jp.outlook.rekih.googlephotoslider.data
 
 import android.util.Log
+import jp.outlook.rekih.googlephotoslider.BuildConfig
 import kotlinx.coroutines.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -21,7 +22,7 @@ const val CLIENT_ID = BuildConfig.googlePhotoApiClientId
 const val CLIENT_SECRET = BuildConfig.googlePhotoApiClientSecret
 
 
-class OAuth {
+object OAuth {
     private val REDIRECT_HOST = "localhost"
     private val REDIRECT_PORT = 5556
     private val REDIRECT_URL = "http://$REDIRECT_HOST:$REDIRECT_PORT/oauth/callback"

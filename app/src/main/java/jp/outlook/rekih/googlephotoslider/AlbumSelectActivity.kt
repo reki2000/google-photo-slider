@@ -12,9 +12,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import jp.outlook.rekih.googlephotoslider.data.Album
 import jp.outlook.rekih.googlephotoslider.databinding.ActivityAlbumSelectBinding
-
-const val EXTRA_ALBUM_ID = "jp.outlook.rekih.googlephotoslider.EXTRA_ALBUM_ID"
+import jp.outlook.rekih.googlephotoslider.viewmodel.AlbumSelect
 
 class AlbumSelectActivity : AppCompatActivity() {
 
@@ -24,7 +24,7 @@ class AlbumSelectActivity : AppCompatActivity() {
 
     private val albumListAdapter = AlbumListAdapter(object: AlbumListAdapter.ListListener{
         override fun onClickItem(tappedView: View, album: Album) {
-            val intent = Intent(application, FullscreenActivity::class.java)
+            val intent = Intent(application, SlideShowActivity::class.java)
             intent.putExtra(EXTRA_ALBUM_ID, album.id)
             startActivity(intent)
         }
@@ -46,42 +46,44 @@ class AlbumSelectActivity : AppCompatActivity() {
         }
 
         albumSelect.albumList.observe(this, { albums ->
-            Log.i("albumselect","got albumlist:$albums")
+            Log.i("albumselect", "got albumlist:$albums")
             albumListAdapter.submitList(albums)
         })
 
         albumSelect.loadAlbumList()
     }
-}
 
+    private class AlbumListAdapter(private val listener: ListListener) :
+        RecyclerView.Adapter<AlbumListAdapter.AlbumItemViewHolder>() {
+        private var list: List<Album> = listOf()
 
-class AlbumListAdapter(private val listener: ListListener) : RecyclerView.Adapter<AlbumListAdapter.AlbumItemViewHolder>() {
-    private var list: List<Album> = listOf()
+        class AlbumItemViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {}
 
-    class AlbumItemViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {}
-
-    interface ListListener {
-        fun onClickItem(tappedView: View, album: Album)
-    }
-
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): AlbumItemViewHolder {
-        val view = LayoutInflater.from(parent.context).inflate(R.layout.view_album_select_item, parent, false)
-        return AlbumItemViewHolder(view)
-    }
-
-    override fun onBindViewHolder(holder: AlbumItemViewHolder, position: Int) {
-        val item = list[position]
-        holder.itemView.findViewById<TextView>(R.id.album_name).text = "${item.title} : ${item.mediaItemsCount}"
-        holder.itemView.setOnClickListener {
-            listener.onClickItem(it, item)
+        interface ListListener {
+            fun onClickItem(tappedView: View, album: Album)
         }
-    }
 
-    override fun getItemCount(): Int = list.size
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): AlbumItemViewHolder {
+            val view = LayoutInflater.from(parent.context)
+                .inflate(R.layout.view_album_select_item, parent, false)
+            return AlbumItemViewHolder(view)
+        }
 
-    fun submitList(newList: List<Album>) {
-        list = newList
-        notifyDataSetChanged()
+        override fun onBindViewHolder(holder: AlbumItemViewHolder, position: Int) {
+            val item = list[position]
+            holder.itemView.findViewById<TextView>(R.id.album_name).text =
+                "${item.title} : ${item.mediaItemsCount}"
+            holder.itemView.setOnClickListener {
+                listener.onClickItem(it, item)
+            }
+        }
+
+        override fun getItemCount(): Int = list.size
+
+        fun submitList(newList: List<Album>) {
+            list = newList
+            notifyDataSetChanged()
+        }
     }
 }
 
