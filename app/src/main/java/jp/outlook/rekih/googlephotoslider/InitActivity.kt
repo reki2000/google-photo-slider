@@ -30,5 +30,6 @@ class InitActivity : AppCompatActivity() {
         }
 
         startActivity(Intent(application, AlbumSelectActivity::class.java))
+        finish()
     }
 }

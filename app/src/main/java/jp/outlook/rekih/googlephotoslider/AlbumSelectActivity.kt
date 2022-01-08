@@ -12,8 +12,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import jp.outlook.rekih.googlephotoslider.data.Album
 import jp.outlook.rekih.googlephotoslider.databinding.ActivityAlbumSelectBinding
+import jp.outlook.rekih.googlephotoslider.model.Album
 import jp.outlook.rekih.googlephotoslider.viewmodel.AlbumSelect
 
 class AlbumSelectActivity : AppCompatActivity() {
@@ -49,6 +49,9 @@ class AlbumSelectActivity : AppCompatActivity() {
             Log.i("albumselect", "got albumlist:$albums")
             albumListAdapter.submitList(albums)
         })
+
+        // スプラッシュ画像消去
+        binding.splashImageview.setImageResource(0)
 
         albumSelect.loadAlbumList()
     }

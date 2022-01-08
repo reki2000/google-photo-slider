@@ -19,93 +19,107 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 
 object GooglePhotoApi {
-    private var accessToken: String = ""
     private val decoder = Json { ignoreUnknownKeys = true }
 
     private val MEDIA_ITEMS_FETCH_SIZE = 100
+
+    private var accessToken: String = ""
+
+    private var albumId = ""
     private var nextPageToken: String? = null
+    private var completed = false
 
-    fun setAccessToken(token :String): GooglePhotoApi {
-        accessToken = token
-        Log.i("api","access token: $accessToken  this: $this")
-        return this
-    }
-
-    suspend fun waitAccessToken() {
+    private suspend fun waitAccessToken() {
         while (accessToken == "") {
             delay(100)
-            Log.i("api","waiting access token: $accessToken this: $this")
+            Log.i("api", "waiting access token: $accessToken this: $this")
             // todo: timeout/error handling
         }
     }
 
+    fun setAccessToken(token: String): GooglePhotoApi {
+        accessToken = token
+        Log.i("api", "access token: $accessToken  this: $this")
+        return this
+    }
+
+    fun switchAlbumTo(id: String) {
+        albumId = id
+        nextPageToken = null
+        completed = false
+    }
+
     suspend fun getAlbumList(): List<Album> = withContext(Dispatchers.IO) {
         waitAccessToken()
-        val client = OkHttpClient()
+
         val url = "https://photoslibrary.googleapis.com/v1/albums".toHttpUrlOrNull()!!
         val albums = mutableListOf<Album>()
         var nextPageToken: String? = null
         do {
             val uriBuilder = url.newBuilder()
-            if (nextPageToken != null) {
-                uriBuilder.addQueryParameter("pageToken", nextPageToken)
-            }
+            nextPageToken?.let { uriBuilder.addQueryParameter("pageToken", it) }
             val req = Request.Builder()
                 .url(uriBuilder.build())
                 .addHeader("Authorization", "Bearer $accessToken")
                 .get()
                 .build()
-            Log.i("api","request: $req")
-            val response = client.newCall(req).execute()
-            if (response.code == 200) {
-                val responseBody = response.body?.string() ?: ""
-    //            Log.i("OAuth", "got album: $response $responseBody")
-                val json = Json.decodeFromString<Albums>(responseBody)
+            Log.i("api", "request: $req")
 
-                albums += json.albums
-                nextPageToken = json.nextPageToken
-            } else {
+            val response = OkHttpClient().newCall(req).execute()
+
+            if (response.code != 200) {
                 throw Error("API error: $response")
             }
+
+            val responseBody = response.body?.string() ?: ""
+            val json = Json.decodeFromString<Albums>(responseBody)
+
+            albums += json.albums
+            nextPageToken = json.nextPageToken
         } while (nextPageToken != null)
         albums
     }
 
-    suspend fun getNextMediaItems(albumId: String): List<MediaItem> = withContext(
+    suspend fun getNextMediaItems(): List<MediaItem> = withContext(
         Dispatchers.IO
     ) {
         waitAccessToken()
-        val client = OkHttpClient()
-        val url = "https://photoslibrary.googleapis.com/v1/mediaItems:search".toHttpUrlOrNull()!!
+
         val mediaItems = mutableListOf<MediaItem>()
 
-        val query = buildJsonObject {
-            put("albumId", albumId)
-            put("pageSize", MEDIA_ITEMS_FETCH_SIZE)
-            if (nextPageToken != null) {
-                put("pageToken", nextPageToken)
+        if (!completed) {
+            val url =
+                "https://photoslibrary.googleapis.com/v1/mediaItems:search".toHttpUrlOrNull()!!
+            val query = buildJsonObject {
+                put("albumId", albumId)
+                put("pageSize", MEDIA_ITEMS_FETCH_SIZE)
+                nextPageToken?.let { put("pageToken", it) }
             }
-        }
-        val body =
-            query.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
-        val req = Request.Builder()
-            .url(url)
-            .addHeader("Authorization", "Bearer $accessToken")
-            .post(body)
-            .build()
-        val response = client.newCall(req).execute()
-        if (response.code != 200) {
-            throw Error("api error: $response")
-        }
+            val body =
+                query.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
+            val req = Request.Builder()
+                .url(url)
+                .addHeader("Authorization", "Bearer $accessToken")
+                .post(body)
+                .build()
 
-        val responseBody = response.body?.string() ?: ""
+            val response = OkHttpClient().newCall(req).execute()
+
+            if (response.code != 200) {
+                throw Error("api error: $response")
+            }
+
+            val responseBody = response.body?.string() ?: ""
 //            Log.i("OAuth", "got mediaItems: $response $responseBody")
-        val json = decoder.decodeFromString<MediaItems>(responseBody)
+            val json = decoder.decodeFromString<MediaItems>(responseBody)
 
-        mediaItems += json.mediaItems
-        nextPageToken = json.nextPageToken
-        Log.i("Api", "got ${json.mediaItems.size} items, nextpagetoken $nextPageToken")
-
+            mediaItems += json.mediaItems
+            nextPageToken = json.nextPageToken
+            if (nextPageToken == null) {
+                completed = true
+            }
+            Log.i("Api", "got ${json.mediaItems.size} items, nextpagetoken ${nextPageToken}")
+        }
         mediaItems
     }
 }

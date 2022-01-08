@@ -2,6 +2,7 @@ package jp.outlook.rekih.googlephotoslider
 
 import android.graphics.Bitmap
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.View
 import android.widget.ImageView
 import androidx.activity.viewModels
@@ -24,11 +25,6 @@ class SlideShowActivity : AppCompatActivity() {
     private lateinit var nextImageView: ImageView
     private lateinit var currentImageView: ImageView
 
-    // TODO: 画面をクリックしてもタイトルバーを出さないようにする
-    // TODO: 右ボタンで早送り、最後まで行ったらアルバムを再読み込みして最初から
-    // TODO: 左ボタンで巻き戻し (先頭まで行ったらアルバム内容を再読み込み）
-    // TODO: 上ボタンで今のコンテンツの日付の前の日付の最初のコンテンツにセット、前の日付がなければアルバムを再読み込みする
-    // TODO: 下ボタンで今のコンテンツの日付の次の日付の最初のコンテンツにセット、、最後まで行ったらアルバムを再読み込みして最初から
     // TODO: 縦長の写真のみ、設定値に基づいてズームして表示 ZOOM_FOR_PORTLAIT = 1.3 など
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,12 +34,7 @@ class SlideShowActivity : AppCompatActivity() {
         binding = ActivitySlideShowBinding.inflate(layoutInflater)
         val activitySlideShow = binding.root
         setContentView(activitySlideShow)
-        activitySlideShow.systemUiVisibility =
-            View.SYSTEM_UI_FLAG_FULLSCREEN or
-                    View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-                    View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
-                    View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
-                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+        hideSystemUI()
 
         currentImageView = binding.fullscreenContent
         nextImageView = binding.fullscreenContent2
@@ -57,13 +48,14 @@ class SlideShowActivity : AppCompatActivity() {
             addListener(object: Player.Listener {
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
                     if (!isPlaying) {
-                        slideShow.movieEnded = true
+                        slideShow.notifyMovieEnded()
                     }
                 }})
             // todo: 初回動画再生に時間がかからないようにする（初期化をする？）
             stop()
             clearMediaItems()
         }
+        binding.playerView.useController = false
         binding.playerView.player = player
 
         // viewModelの変更を監視（本質はSlideShowからのUIに対するコマンドの受信）
@@ -71,19 +63,43 @@ class SlideShowActivity : AppCompatActivity() {
         slideShow.startMovie.observe(this, startMovie)
         slideShow.prepareMovie.observe(this, prepareMovie)
 
-        // スプラッシュ画像消去
-        binding.fullscreenContent.setImageResource(0)
-
-
         // スライドショー開始
         val albumId = intent.getStringExtra(EXTRA_ALBUM_ID)
         if (albumId != null) {
-            slideShow.start(albumId)
+            slideShow.prepare(albumId)
+            slideShow.start()
         }
     }
 
-    private val showImage = Observer<Bitmap> { bitmap ->
+    override fun onStop() {
+        super.onStop()
+        player.stop()
+        slideShow.stop()
+    }
+
+    override fun onRestart() {
+        super.onRestart()
+        hideSystemUI()
+        slideShow.resume()
+    }
+
+    private fun hideSystemUI() {
+        val activityFullscreen = binding.root
+        activityFullscreen.systemUiVisibility =
+            View.SYSTEM_UI_FLAG_FULLSCREEN or
+                    View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                    View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                    View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
+                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+
+    }
+
+    private val showImage = Observer<Pair<Bitmap, String>> { (bitmap, caption) ->
+        hideSystemUI()
         binding.playerView.visibility = View.INVISIBLE
+        player.stop()
+
+        binding.dateText.text = caption
 
         nextImageView.apply {
             setImageBitmap(bitmap)
@@ -94,6 +110,8 @@ class SlideShowActivity : AppCompatActivity() {
             alpha = 1f
             animate().alpha(0f).setDuration(500)
         }
+
+        binding.dateText.visibility = View.VISIBLE
         nextImageView.visibility = View.VISIBLE
         currentImageView.visibility = View.VISIBLE
 
@@ -112,14 +130,44 @@ class SlideShowActivity : AppCompatActivity() {
     }
 
     private val startMovie = Observer<String> { _ ->
+        hideSystemUI()
         binding.fullscreenContent.visibility = View.INVISIBLE
         binding.fullscreenContent2.visibility = View.INVISIBLE
         currentImageView.setImageResource(0)
 
+        binding.dateText.visibility = View.INVISIBLE
         binding.playerView.visibility = View.VISIBLE
         player.apply {
             seekToNextWindow()
             play()
         }
     }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        return when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                slideShow.forward()
+                true
+            }
+            KeyEvent.KEYCODE_DPAD_DOWN -> {
+                slideShow.forwardMuch()
+                true
+            }
+            KeyEvent.KEYCODE_DPAD_LEFT -> {
+                slideShow.rewind()
+                true
+            }
+            KeyEvent.KEYCODE_DPAD_UP -> {
+                slideShow.rewindMuch()
+                true
+            }
+            KeyEvent.KEYCODE_BACK -> {
+                finish()
+                true
+            }
+            else -> super.onKeyDown(keyCode, event)
+        }
+    }
+
+
 }
