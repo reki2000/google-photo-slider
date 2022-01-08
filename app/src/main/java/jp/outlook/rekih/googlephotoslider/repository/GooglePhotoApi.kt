@@ -1,12 +1,9 @@
-package jp.outlook.rekih.googlephotoslider.repository
+package jp.outlook.rekih.googlephotoslider
 
 import android.util.Log
-import jp.outlook.rekih.googlephotoslider.model.Album
-import jp.outlook.rekih.googlephotoslider.model.Albums
-import jp.outlook.rekih.googlephotoslider.model.MediaItem
-import jp.outlook.rekih.googlephotoslider.model.MediaItems
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
@@ -17,18 +14,26 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 
-const val MEDIA_ITEMS_FETCH_SIZE = 100
-
-object GooglePhotoApi {
+class GooglePhotoApi {
     private var accessToken: String = ""
     private val decoder = Json { ignoreUnknownKeys = true }
 
+    private val MEDIA_ITEMS_FETCH_SIZE = 100
     private var nextPageToken: String? = null
     private var completed = false
 
     fun setAccessToken(token :String): GooglePhotoApi {
         accessToken = token
+        Log.i("api","access token: $accessToken  this: $this")
         return this
+    }
+
+    suspend fun waitAccessToken() {
+        while (accessToken == "") {
+            delay(100)
+            Log.i("api","waiting access token: $accessToken this: $this")
+            // todo: timeout/error handling
+        }
     }
 
     suspend fun getAlbumList(): List<Album> = withContext(Dispatchers.IO) {
@@ -47,6 +52,9 @@ object GooglePhotoApi {
                 .get()
                 .build()
             val response = client.newCall(req).execute()
+            if (response.code != 200) {
+                throw Error("api error: $response")
+            }
 
             val responseBody = response.body?.string() ?: ""
 //            Log.i("OAuth", "got album: $response $responseBody")
@@ -82,6 +90,9 @@ object GooglePhotoApi {
                 .post(body)
                 .build()
             val response = client.newCall(req).execute()
+            if (response.code != 200) {
+                throw Error("api error: $response")
+            }
 
             val responseBody = response.body?.string() ?: ""
 //            Log.i("OAuth", "got mediaItems: $response $responseBody")
@@ -97,3 +108,33 @@ object GooglePhotoApi {
         mediaItems
     }
 }
+
+@Serializable
+data class Albums(
+    val albums: List<Album> = listOf(),
+    val nextPageToken: String? = null
+)
+
+@Serializable
+data class Album(
+    val id: String,
+    val title: String,
+    val productUrl: String,
+    val mediaItemsCount: String = "",
+    val coverPhotoBaseUrl: String = "",
+    val coverPhotoMediaItemId: String = "",
+)
+
+@Serializable
+data class MediaItems(
+    val mediaItems: List<MediaItem> = listOf(),
+    val nextPageToken: String? = null
+)
+
+@Serializable
+data class MediaItem(
+    val id: String,
+    val productUrl: String,
+    val baseUrl: String = "",
+    val mimeType: String = "",
+)

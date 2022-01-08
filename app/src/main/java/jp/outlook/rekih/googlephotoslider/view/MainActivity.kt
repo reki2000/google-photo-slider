@@ -1,10 +1,9 @@
-package jp.outlook.rekih.googlephotoslider.view
+package jp.outlook.rekih.googlephotoslider
 
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
-import android.view.KeyEvent
 import android.view.View
 import android.widget.ImageView
 import androidx.activity.viewModels
@@ -13,10 +12,8 @@ import androidx.lifecycle.Observer
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.SimpleExoPlayer
 import jp.outlook.rekih.googlephotoslider.databinding.ActivityFullscreenBinding
-import jp.outlook.rekih.googlephotoslider.repository.Preference
-import jp.outlook.rekih.googlephotoslider.viewmodel.SlideShow
 
-class MainActivity : AppCompatActivity() {
+class FullscreenActivity : AppCompatActivity() {
 
     private val slideShow : SlideShow by viewModels()
 
@@ -26,6 +23,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var nextImageView: ImageView
     private lateinit var currentImageView: ImageView
 
+    // TODO: 画面をクリックしてもタイトルバーを出さないようにする
+    // TODO: 右ボタンで早送り、最後まで行ったらアルバムを再読み込みして最初から
+    // TODO: 左ボタンで巻き戻し (先頭まで行ったらアルバム内容を再読み込み）
+    // TODO: 上ボタンで今のコンテンツの日付の前の日付の最初のコンテンツにセット、前の日付がなければアルバムを再読み込みする
+    // TODO: 下ボタンで今のコンテンツの日付の次の日付の最初のコンテンツにセット、、最後まで行ったらアルバムを再読み込みして最初から
     // TODO: 縦長の写真のみ、設定値に基づいてズームして表示 ZOOM_FOR_PORTLAIT = 1.3 など
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,11 +69,13 @@ class MainActivity : AppCompatActivity() {
         slideShow.prepareMovie.observe(this, prepareMovie)
 
         // スプラッシュ画像消去
-        //binding.fullscreenContent.setImageResource(0)
+        binding.fullscreenContent.setImageResource(0)
 
         // スライドショー開始
-        slideShow.prepare()
-        slideShow.start()
+        val albumId = intent.getStringExtra(EXTRA_ALBUM_ID)
+        if (albumId != null) {
+            slideShow.start(albumId)
+        }
     }
 
     override fun onStop() {
@@ -117,10 +121,6 @@ class MainActivity : AppCompatActivity() {
             }
             else -> super.onKeyUp(keyCode, event)
         }
-    }
-
-    private val startBrowser = Observer<String> { url ->
-        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
     }
 
     private val showImage = Observer<Pair<Bitmap,String>> { (bitmap, caption) ->

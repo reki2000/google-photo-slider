@@ -1,24 +1,34 @@
 package jp.outlook.rekih.googlephotoslider
 
+import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.Observer
-import androidx.recyclerview.widget.DiffUtil
-import androidx.recyclerview.widget.ListAdapter
+import androidx.recyclerview.widget.DefaultItemAnimator
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import jp.outlook.rekih.googlephotoslider.databinding.ActivityAlbumSelectBinding
-import jp.outlook.rekih.googlephotoslider.databinding.ViewAlbumSelectItemBinding
+
+const val EXTRA_ALBUM_ID = "jp.outlook.rekih.googlephotoslider.EXTRA_ALBUM_ID"
 
 class AlbumSelectActivity : AppCompatActivity() {
 
-    private val slideShow : SlideShow by viewModels()
+    private val albumSelect : AlbumSelect by viewModels()
 
     private lateinit var binding: ActivityAlbumSelectBinding
 
-    private val albumListAdapter = AlbumListAdapter()
+    private val albumListAdapter = AlbumListAdapter(object: AlbumListAdapter.ListListener{
+        override fun onClickItem(tappedView: View, album: Album) {
+            val intent = Intent(application, FullscreenActivity::class.java)
+            intent.putExtra(EXTRA_ALBUM_ID, album.id)
+            startActivity(intent)
+        }
+    })
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,40 +37,51 @@ class AlbumSelectActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         binding.albumList.adapter = albumListAdapter
-        slideShow.selectAlbum.observe(this, selectAlbum)
-        slideShow.selectAlbum.value = listOf("ABC","DEF")
-    }
 
-    private val selectAlbum = Observer<List<String>> {
-        albums -> albumListAdapter.submitList(albums)
+        binding.albumList.apply {
+            setHasFixedSize(true)
+            layoutManager = LinearLayoutManager(context)
+            itemAnimator = DefaultItemAnimator()
+            adapter = albumListAdapter
+        }
+
+        albumSelect.albumList.observe(this, { albums ->
+            Log.i("albumselect","got albumlist:$albums")
+            albumListAdapter.submitList(albums)
+        })
+
+        albumSelect.loadAlbumList()
     }
 }
 
-class AlbumListAdapter : ListAdapter<String, AlbumItemViewHolder>(DIFF_UTIL_ITEM_CALLBACK) {
+
+class AlbumListAdapter(private val listener: ListListener) : RecyclerView.Adapter<AlbumListAdapter.AlbumItemViewHolder>() {
+    private var list: List<Album> = listOf()
+
+    class AlbumItemViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {}
+
+    interface ListListener {
+        fun onClickItem(tappedView: View, album: Album)
+    }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): AlbumItemViewHolder {
-        val view = ViewAlbumSelectItemBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        val view = LayoutInflater.from(parent.context).inflate(R.layout.view_album_select_item, parent, false)
         return AlbumItemViewHolder(view)
     }
 
     override fun onBindViewHolder(holder: AlbumItemViewHolder, position: Int) {
-        holder.bind(getItem(position))
+        val item = list[position]
+        holder.itemView.findViewById<TextView>(R.id.album_name).text = "${item.title} : ${item.mediaItemsCount}"
+        holder.itemView.setOnClickListener {
+            listener.onClickItem(it, item)
+        }
+    }
+
+    override fun getItemCount(): Int = list.size
+
+    fun submitList(newList: List<Album>) {
+        list = newList
+        notifyDataSetChanged()
     }
 }
 
-class AlbumItemViewHolder(
-    private val binding: ViewAlbumSelectItemBinding
-) : RecyclerView.ViewHolder(binding.root) {
-    fun bind(name: String) {
-        binding.albumName.text = name
-    }
-}
-
-val DIFF_UTIL_ITEM_CALLBACK = object : DiffUtil.ItemCallback<String>() {
-    override fun areContentsTheSame(oldItem: String, newItem: String): Boolean {
-        return oldItem == newItem
-    }
-
-    override fun areItemsTheSame(oldItem: String, newItem: String): Boolean {
-        return oldItem == newItem
-    }
-}
