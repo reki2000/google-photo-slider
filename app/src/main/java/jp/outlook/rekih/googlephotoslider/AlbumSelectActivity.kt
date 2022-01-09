@@ -19,17 +19,21 @@ import jp.outlook.rekih.googlephotoslider.viewmodel.AlbumSelect
 
 class AlbumSelectActivity : AppCompatActivity() {
 
-    private val albumSelect : AlbumSelect by viewModels()
+    private val albumSelect: AlbumSelect by viewModels()
 
     private lateinit var binding: ActivityAlbumSelectBinding
 
-    private val albumListAdapter = AlbumListAdapter(object: AlbumListAdapter.ListListener{
+    private val albumListAdapter = AlbumListAdapter(object : AlbumListAdapter.ListListener {
         override fun onClickItem(tappedView: View, album: Album) {
-            val intent = Intent(application, SlideShowActivity::class.java)
-            intent.putExtra(EXTRA_ALBUM_ID, album.id)
-            startActivity(intent)
+            selectAlbum(album)
         }
     })
+
+    private fun selectAlbum(album: Album) {
+        val intent = Intent(application, SlideShowActivity::class.java)
+        intent.putExtra(EXTRA_ALBUM_ID, album.id)
+        startActivity(intent)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

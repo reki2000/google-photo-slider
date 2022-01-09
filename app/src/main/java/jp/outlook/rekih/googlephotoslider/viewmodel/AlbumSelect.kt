@@ -19,7 +19,8 @@ class AlbumSelect : ViewModel() {
                     it.coverPhotoBitmap = ExternalContents.loadImageBitmap(it.coverPhotoBaseUrl)
                     it
                 }
-            albumList.value = albums.toList()
+                .toList()
+            albumList.value = albums
         }
     }
 }
