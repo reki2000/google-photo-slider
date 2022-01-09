@@ -80,7 +80,7 @@ class SlideShow : ViewModel() {
     fun prepare(albumId: String) {
         viewModelScope.launch {
             GooglePhotoApi.switchAlbumTo(albumId)
-            mediaList = MediaList({ GooglePhotoApi.getNextMediaItems() })
+            mediaList = MediaList { GooglePhotoApi.getNextMediaItems() }
             // todo: アルバムが空の場合の処理
         }
         prepared = true

@@ -8,6 +8,7 @@ import jp.outlook.rekih.googlephotoslider.model.MediaItems
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
@@ -21,7 +22,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 object GooglePhotoApi {
     private val decoder = Json { ignoreUnknownKeys = true }
 
-    private val MEDIA_ITEMS_FETCH_SIZE = 100
+    private const val MEDIA_ITEMS_FETCH_SIZE = 100
 
     private var accessToken: String = ""
 
@@ -49,6 +50,7 @@ object GooglePhotoApi {
         completed = false
     }
 
+    @ExperimentalSerializationApi
     suspend fun getAlbumList(): List<Album> = withContext(Dispatchers.IO) {
         waitAccessToken()
 
@@ -80,6 +82,7 @@ object GooglePhotoApi {
         albums
     }
 
+    @ExperimentalSerializationApi
     suspend fun getNextMediaItems(): List<MediaItem> = withContext(
         Dispatchers.IO
     ) {

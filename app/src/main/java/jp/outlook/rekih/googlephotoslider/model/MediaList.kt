@@ -1,11 +1,12 @@
 package jp.outlook.rekih.googlephotoslider.model
 
-import jp.outlook.rekih.googlephotoslider.model.MediaItem
-
 class MediaList(val fetchNext: suspend () -> List<MediaItem>) {
     private var itemIndex = 0
-    private val PREFETCH_LIMIT = 20
     private var items = listOf<MediaItem>()
+
+    companion object {
+        private const val PREFETCH_LIMIT = 20
+    }
 
     suspend fun current(): MediaItem {
         if (itemIndex >= items.size - PREFETCH_LIMIT) {
@@ -14,8 +15,8 @@ class MediaList(val fetchNext: suspend () -> List<MediaItem>) {
         return items[itemIndex]
     }
 
-    suspend fun prevDate() : MediaItem {
-        val date = prev().mediaMetadata.creationTime.substring(0,10)
+    suspend fun prevDate(): MediaItem {
+        val date = prev().mediaMetadata.creationTime.substring(0, 10)
         while (itemIndex != 0) {
             val item = prev()
             if (item.mediaMetadata.creationTime.substring(0,10) != date) {

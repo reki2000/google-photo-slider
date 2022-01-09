@@ -122,7 +122,7 @@ class SlideShowActivity : AppCompatActivity() {
     }
 
     private val prepareMovie = Observer<String> { uri ->
-        val media = com.google.android.exoplayer2.MediaItem.fromUri("${uri}=dv")
+        val media = com.google.android.exoplayer2.MediaItem.fromUri("$uri=dv")
         player.apply {
             addMediaItem(media)
             prepare()

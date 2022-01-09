@@ -3,6 +3,7 @@ package jp.outlook.rekih.googlephotoslider.data
 import android.util.Log
 import jp.outlook.rekih.googlephotoslider.BuildConfig
 import kotlinx.coroutines.*
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -23,22 +24,23 @@ const val CLIENT_SECRET = BuildConfig.googlePhotoApiClientSecret
 
 
 object OAuth {
-    private val REDIRECT_HOST = "localhost"
-    private val REDIRECT_PORT = 5556
-    private val REDIRECT_URL = "http://$REDIRECT_HOST:$REDIRECT_PORT/oauth/callback"
-    private val SCOPE = "https://www.googleapis.com/auth/photoslibrary"
+    private const val REDIRECT_HOST = "localhost"
+    private const val REDIRECT_PORT = 5556
+    private const val REDIRECT_URL = "http://$REDIRECT_HOST:$REDIRECT_PORT/oauth/callback"
+    private const val SCOPE = "https://www.googleapis.com/auth/photoslibrary"
+    private val BASE_URL = "https://accounts.google.com/o/oauth2/v2/auth".toHttpUrl()
 
     private var oAuthCode: String = ""
     private var accessToken: String = ""
     private var refreshToken: String = ""
 
-    fun authorizeWithBrowser(browserInvoker: (String)->Unit) {
+    fun authorizeWithBrowser(browserInvoker: (String) -> Unit) {
         startWebServer()
         browserInvoker(createBrowserIntentUrl())
     }
 
     private fun createBrowserIntentUrl(): String {
-        return "https://accounts.google.com/o/oauth2/v2/auth".toHttpUrl()
+        return BASE_URL
             .newBuilder()
             .addQueryParameter("response_type", "code")
             .addQueryParameter("client_id", CLIENT_ID)
@@ -108,6 +110,7 @@ object OAuth {
         }
     }
 
+    @ExperimentalSerializationApi
     private suspend fun getAccessToken(body: FormBody): AuthResponse = withContext(Dispatchers.IO) {
         val client = OkHttpClient()
         val tokenUrl = "https://www.googleapis.com/oauth2/v4/token"
