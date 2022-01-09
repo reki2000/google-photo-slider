@@ -1,4 +1,4 @@
-package jp.outlook.rekih.googlephotoslider.repository
+package jp.outlook.rekih.googlephotoslider.data
 
 import android.util.Log
 import jp.outlook.rekih.googlephotoslider.model.Album
@@ -6,6 +6,7 @@ import jp.outlook.rekih.googlephotoslider.model.Albums
 import jp.outlook.rekih.googlephotoslider.model.MediaItem
 import jp.outlook.rekih.googlephotoslider.model.MediaItems
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
@@ -17,39 +18,60 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 
-const val MEDIA_ITEMS_FETCH_SIZE = 100
-
 object GooglePhotoApi {
-    private var accessToken: String = ""
     private val decoder = Json { ignoreUnknownKeys = true }
 
+    private val MEDIA_ITEMS_FETCH_SIZE = 100
+
+    private var accessToken: String = ""
+
+    private var albumId = ""
     private var nextPageToken: String? = null
     private var completed = false
 
-    fun setAccessToken(token :String): GooglePhotoApi {
+    private suspend fun waitAccessToken() {
+        while (accessToken == "") {
+            delay(100)
+            Log.i("api", "waiting access token: $accessToken this: $this")
+            // todo: timeout/error handling
+        }
+    }
+
+    fun setAccessToken(token: String): GooglePhotoApi {
         accessToken = token
+        Log.i("api", "access token: $accessToken  this: $this")
         return this
     }
 
+    fun switchAlbumTo(id: String) {
+        albumId = id
+        nextPageToken = null
+        completed = false
+    }
+
     suspend fun getAlbumList(): List<Album> = withContext(Dispatchers.IO) {
-        val client = OkHttpClient()
+        waitAccessToken()
+
         val url = "https://photoslibrary.googleapis.com/v1/albums".toHttpUrlOrNull()!!
         val albums = mutableListOf<Album>()
         var nextPageToken: String? = null
         do {
             val uriBuilder = url.newBuilder()
-            if (nextPageToken != null) {
-                uriBuilder.addQueryParameter("pageToken", nextPageToken)
-            }
+            nextPageToken?.let { uriBuilder.addQueryParameter("pageToken", it) }
             val req = Request.Builder()
                 .url(uriBuilder.build())
                 .addHeader("Authorization", "Bearer $accessToken")
                 .get()
                 .build()
-            val response = client.newCall(req).execute()
+            Log.i("api", "request: $req")
+
+            val response = OkHttpClient().newCall(req).execute()
+
+            if (response.code != 200) {
+                throw Error("API error: $response")
+            }
 
             val responseBody = response.body?.string() ?: ""
-//            Log.i("OAuth", "got album: $response $responseBody")
             val json = Json.decodeFromString<Albums>(responseBody)
 
             albums += json.albums
@@ -58,21 +80,20 @@ object GooglePhotoApi {
         albums
     }
 
-    suspend fun getNextMediaItems(albumId: String): List<MediaItem> = withContext(
+    suspend fun getNextMediaItems(): List<MediaItem> = withContext(
         Dispatchers.IO
     ) {
+        waitAccessToken()
+
         val mediaItems = mutableListOf<MediaItem>()
 
         if (!completed) {
-            val client = OkHttpClient()
             val url =
                 "https://photoslibrary.googleapis.com/v1/mediaItems:search".toHttpUrlOrNull()!!
             val query = buildJsonObject {
                 put("albumId", albumId)
                 put("pageSize", MEDIA_ITEMS_FETCH_SIZE)
-                if (nextPageToken != null) {
-                    put("pageToken", nextPageToken)
-                }
+                nextPageToken?.let { put("pageToken", it) }
             }
             val body =
                 query.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
@@ -81,7 +102,12 @@ object GooglePhotoApi {
                 .addHeader("Authorization", "Bearer $accessToken")
                 .post(body)
                 .build()
-            val response = client.newCall(req).execute()
+
+            val response = OkHttpClient().newCall(req).execute()
+
+            if (response.code != 200) {
+                throw Error("api error: $response")
+            }
 
             val responseBody = response.body?.string() ?: ""
 //            Log.i("OAuth", "got mediaItems: $response $responseBody")

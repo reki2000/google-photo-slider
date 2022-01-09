@@ -1,8 +1,6 @@
-package jp.outlook.rekih.googlephotoslider.view
+package jp.outlook.rekih.googlephotoslider
 
-import android.content.Intent
 import android.graphics.Bitmap
-import android.net.Uri
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.View
@@ -12,15 +10,16 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.SimpleExoPlayer
-import jp.outlook.rekih.googlephotoslider.databinding.ActivityFullscreenBinding
-import jp.outlook.rekih.googlephotoslider.repository.Preference
+import jp.outlook.rekih.googlephotoslider.databinding.ActivitySlideShowBinding
 import jp.outlook.rekih.googlephotoslider.viewmodel.SlideShow
 
-class MainActivity : AppCompatActivity() {
+const val EXTRA_ALBUM_ID = "jp.outlook.rekih.googlephotoslider.EXTRA_ALBUM_ID"
 
-    private val slideShow : SlideShow by viewModels()
+class SlideShowActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivityFullscreenBinding
+    private val slideShow: SlideShow by viewModels()
+
+    private lateinit var binding: ActivitySlideShowBinding
     private lateinit var player: SimpleExoPlayer
 
     private lateinit var nextImageView: ImageView
@@ -32,10 +31,9 @@ class MainActivity : AppCompatActivity() {
 
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        Preference.init(applicationContext)
-
-        binding = ActivityFullscreenBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        binding = ActivitySlideShowBinding.inflate(layoutInflater)
+        val activitySlideShow = binding.root
+        setContentView(activitySlideShow)
         hideSystemUI()
 
         currentImageView = binding.fullscreenContent
@@ -50,7 +48,7 @@ class MainActivity : AppCompatActivity() {
             addListener(object: Player.Listener {
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
                     if (!isPlaying) {
-                        slideShow.movieEnded = true
+                        slideShow.notifyMovieEnded()
                     }
                 }})
             // todo: 初回動画再生に時間がかからないようにする（初期化をする？）
@@ -61,17 +59,16 @@ class MainActivity : AppCompatActivity() {
         binding.playerView.player = player
 
         // viewModelの変更を監視（本質はSlideShowからのUIに対するコマンドの受信）
-        slideShow.startBrowser.observe(this, startBrowser)
         slideShow.showImage.observe(this, showImage)
         slideShow.startMovie.observe(this, startMovie)
         slideShow.prepareMovie.observe(this, prepareMovie)
 
-        // スプラッシュ画像消去
-        //binding.fullscreenContent.setImageResource(0)
-
         // スライドショー開始
-        slideShow.prepare()
-        slideShow.start()
+        val albumId = intent.getStringExtra(EXTRA_ALBUM_ID)
+        if (albumId != null) {
+            slideShow.prepare(albumId)
+            slideShow.start()
+        }
     }
 
     override fun onStop() {
@@ -83,7 +80,7 @@ class MainActivity : AppCompatActivity() {
     override fun onRestart() {
         super.onRestart()
         hideSystemUI()
-        slideShow.start()
+        slideShow.resume()
     }
 
     private fun hideSystemUI() {
@@ -97,47 +94,23 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-    override fun onKeyDown(keyCode:Int, event: KeyEvent): Boolean {
-        return when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                slideShow.forward()
-                true
-            }
-            KeyEvent.KEYCODE_DPAD_DOWN -> {
-                slideShow.forwardMuch()
-                true
-            }
-            KeyEvent.KEYCODE_DPAD_LEFT -> {
-                slideShow.rewind()
-                true
-            }
-            KeyEvent.KEYCODE_DPAD_UP -> {
-                slideShow.rewindMuch()
-                true
-            }
-            else -> super.onKeyUp(keyCode, event)
-        }
-    }
-
-    private val startBrowser = Observer<String> { url ->
-        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-    }
-
-    private val showImage = Observer<Pair<Bitmap,String>> { (bitmap, caption) ->
+    private val showImage = Observer<Pair<Bitmap, String>> { (bitmap, caption) ->
         hideSystemUI()
         binding.playerView.visibility = View.INVISIBLE
         player.stop()
 
         binding.dateText.text = caption
+
         nextImageView.apply {
             setImageBitmap(bitmap)
             alpha = 0f
-            animate().alpha(1f).setDuration(500);
+            animate().alpha(1f).setDuration(500)
         }
         currentImageView.apply {
             alpha = 1f
-            animate().alpha(0f).setDuration(500);
+            animate().alpha(0f).setDuration(500)
         }
+
         binding.dateText.visibility = View.VISIBLE
         nextImageView.visibility = View.VISIBLE
         currentImageView.visibility = View.VISIBLE
@@ -160,14 +133,41 @@ class MainActivity : AppCompatActivity() {
         hideSystemUI()
         binding.fullscreenContent.visibility = View.INVISIBLE
         binding.fullscreenContent2.visibility = View.INVISIBLE
-        binding.dateText.visibility = View.INVISIBLE
         currentImageView.setImageResource(0)
-        nextImageView.setImageResource(0)
 
+        binding.dateText.visibility = View.INVISIBLE
         binding.playerView.visibility = View.VISIBLE
         player.apply {
             seekToNextWindow()
             play()
         }
     }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        return when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                slideShow.forward()
+                true
+            }
+            KeyEvent.KEYCODE_DPAD_DOWN -> {
+                slideShow.forwardMuch()
+                true
+            }
+            KeyEvent.KEYCODE_DPAD_LEFT -> {
+                slideShow.rewind()
+                true
+            }
+            KeyEvent.KEYCODE_DPAD_UP -> {
+                slideShow.rewindMuch()
+                true
+            }
+            KeyEvent.KEYCODE_BACK -> {
+                finish()
+                true
+            }
+            else -> super.onKeyDown(keyCode, event)
+        }
+    }
+
+
 }

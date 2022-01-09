@@ -1,4 +1,4 @@
-package jp.outlook.rekih.googlephotoslider.repository
+package jp.outlook.rekih.googlephotoslider.data
 
 import android.util.Log
 import jp.outlook.rekih.googlephotoslider.BuildConfig
@@ -20,79 +20,21 @@ import java.net.InetAddress
 
 const val CLIENT_ID = BuildConfig.googlePhotoApiClientId
 const val CLIENT_SECRET = BuildConfig.googlePhotoApiClientSecret
-const val REDIRECT_HOST = "localhost"
-const val REDIRECT_PORT = 5556
-const val REDIRECT_URL = "http://$REDIRECT_HOST:$REDIRECT_PORT/oauth/callback"
-const val SCOPE = "https://www.googleapis.com/auth/photoslibrary"
 
-object GoogleOAuthApi {
+
+object OAuth {
+    private val REDIRECT_HOST = "localhost"
+    private val REDIRECT_PORT = 5556
+    private val REDIRECT_URL = "http://$REDIRECT_HOST:$REDIRECT_PORT/oauth/callback"
+    private val SCOPE = "https://www.googleapis.com/auth/photoslibrary"
 
     private var oAuthCode: String = ""
     private var accessToken: String = ""
     private var refreshToken: String = ""
 
-    suspend fun isAuthorizeRequired(): Boolean = withContext(Dispatchers.IO) {
-        refreshToken = Preference.getRefreshToken()
-        if (refreshToken == "") {
-            true
-        } else {
-            storeAccessTokenByRefreshToken()
-            false
-        }
-    }
-
-    suspend fun authorizeWithBrowser(browserInvoker: (String)->Unit) = withContext(Dispatchers.IO) {
+    fun authorizeWithBrowser(browserInvoker: (String)->Unit) {
         startWebServer()
         browserInvoker(createBrowserIntentUrl())
-    }
-
-    suspend fun waitAccessToken(): String = withContext(Dispatchers.IO) {
-        while (accessToken == "") {
-            delay(100)
-            // todo: timeout/error handling
-        }
-        accessToken
-    }
-
-    private fun storeAccessTokenByRefreshToken() {
-        val body = FormBody.Builder()
-            .add("refresh_token", refreshToken)
-            .add("client_id", CLIENT_ID)
-            .add("client_secret", CLIENT_SECRET)
-            .add("redirect_uri", REDIRECT_URL)
-            .add("grant_type", "refresh_token")
-            .build()
-        val resp = getAccessToken(body)
-        accessToken = resp.accessToken
-    }
-
-    private fun storeAccessTokenByCode(code: String) {
-        val body = FormBody.Builder()
-            .add("code", code)
-            .add("client_id", CLIENT_ID)
-            .add("client_secret", CLIENT_SECRET)
-            .add("redirect_uri", REDIRECT_URL)
-            .add("grant_type", "authorization_code")
-            .add("access_type", "offline")
-            .add("prompt", "consent")
-            .build()
-        val resp = getAccessToken(body)
-        // todo: error handling
-        accessToken = resp.accessToken
-        if (resp.refreshToken.isNotEmpty()) {
-            refreshToken = resp.refreshToken
-            Preference.storeRefreshToken(refreshToken)
-        }
-    }
-
-    private fun getAccessToken(body: FormBody): AuthResponse {
-        val client = OkHttpClient()
-        val tokenUrl = "https://www.googleapis.com/oauth2/v4/token"
-        val response = client.newCall(Request.Builder().url(tokenUrl).post(body).build()).execute()
-        val responseBody = response.body?.string() ?: ""
-        Log.i("OAuth", "got token: $response $responseBody")
-        val json = Json.decodeFromString<AuthResponse>(responseBody)
-        return json
     }
 
     private fun createBrowserIntentUrl(): String {
@@ -119,16 +61,61 @@ object GoogleOAuthApi {
         return ""
     }
 
-    private fun startWebServer() {
-        val server = MockWebServer()
-        // SAMで書きたいが今のところ書けない
-        // server.dispatcher = { request: RecordedRequest -> handleRequest(request) }
-        server.dispatcher = object: Dispatcher() {
-            override fun dispatch(request: RecordedRequest): MockResponse {
-                return handleRequest(request)
-            }
+    suspend fun isAuthorizeRequired(): Boolean {
+        refreshToken = Preference.getRefreshToken()
+        if (refreshToken == "") {
+            return true
         }
-        server.start(InetAddress.getByName(REDIRECT_HOST), REDIRECT_PORT)
+        storeAccessTokenByRefreshToken()
+        return false
+    }
+
+    suspend fun waitAccessToken(): String {
+        while (accessToken == "") {
+            delay(100)
+            // todo: timeout/error handling
+        }
+        return accessToken
+    }
+    private suspend fun storeAccessTokenByRefreshToken() {
+        val body = FormBody.Builder()
+            .add("refresh_token", refreshToken)
+            .add("client_id", CLIENT_ID)
+            .add("client_secret", CLIENT_SECRET)
+            .add("redirect_uri", REDIRECT_URL)
+            .add("grant_type", "refresh_token")
+            .build()
+        val resp = getAccessToken(body)
+        accessToken = resp.accessToken
+    }
+
+    private suspend fun storeAccessTokenByCode(code: String) {
+        val body = FormBody.Builder()
+            .add("code", code)
+            .add("client_id", CLIENT_ID)
+            .add("client_secret", CLIENT_SECRET)
+            .add("redirect_uri", REDIRECT_URL)
+            .add("grant_type", "authorization_code")
+            .add("access_type", "offline")
+            .add("prompt", "consent")
+            .build()
+        val resp = getAccessToken(body)
+        // todo: error handling
+        accessToken = resp.accessToken
+        if (resp.refreshToken.isNotEmpty()) {
+            refreshToken = resp.refreshToken
+            Preference.storeRefreshToken(refreshToken)
+        }
+    }
+
+    private suspend fun getAccessToken(body: FormBody): AuthResponse = withContext(Dispatchers.IO) {
+        val client = OkHttpClient()
+        val tokenUrl = "https://www.googleapis.com/oauth2/v4/token"
+        val response = client.newCall(Request.Builder().url(tokenUrl).post(body).build()).execute()
+        val responseBody = response.body?.string() ?: ""
+        Log.i("OAuth", "got token: $response $responseBody")
+        val json = Json.decodeFromString<AuthResponse>(responseBody)
+        json
     }
 
     private fun handleRequest(req: RecordedRequest): MockResponse {
@@ -149,6 +136,19 @@ object GoogleOAuthApi {
         }
     }
 
+    private fun startWebServer() {
+        CoroutineScope(Dispatchers.IO).launch {
+            val server = MockWebServer()
+            // SAMで書きたいが今のところ書けない
+            // server.dispatcher = { request: RecordedRequest -> handleRequest(request) }
+            server.dispatcher = object: Dispatcher() {
+                override fun dispatch(request: RecordedRequest): MockResponse {
+                    return handleRequest(request)
+                }
+            }
+            server.start(InetAddress.getByName(REDIRECT_HOST), REDIRECT_PORT)
+        }
+    }
 }
 
 // todo: inner class にする
