@@ -6,6 +6,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -74,10 +75,15 @@ class AlbumSelectActivity : AppCompatActivity() {
 
         override fun onBindViewHolder(holder: AlbumItemViewHolder, position: Int) {
             val item = list[position]
-            holder.itemView.findViewById<TextView>(R.id.album_name).text =
-                "${item.title} : ${item.mediaItemsCount}"
-            holder.itemView.setOnClickListener {
-                listener.onClickItem(it, item)
+            holder.itemView.apply {
+                findViewById<TextView>(R.id.name).text = item.title
+                findViewById<TextView>(R.id.media_count).text = item.mediaItemsCount
+                item.coverPhotoBitmap?.let {
+                    findViewById<ImageView>(R.id.cover_image).setImageBitmap(it)
+                }
+                setOnClickListener {
+                    listener.onClickItem(it, item)
+                }
             }
         }
 

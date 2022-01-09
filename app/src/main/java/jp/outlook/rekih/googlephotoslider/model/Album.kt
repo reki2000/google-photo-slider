@@ -1,6 +1,8 @@
 package jp.outlook.rekih.googlephotoslider.model
 
+import android.graphics.Bitmap
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 
 @Serializable
@@ -17,6 +19,7 @@ data class Album(
     val mediaItemsCount: String = "",
     val coverPhotoBaseUrl: String = "",
     val coverPhotoMediaItemId: String = "",
+    @Transient var coverPhotoBitmap: Bitmap? = null
 )
 
 @Serializable
