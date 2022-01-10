@@ -102,6 +102,7 @@ object OAuth {
             .add("prompt", "consent")
             .build()
         val resp = getAccessToken(body)
+        Log.i("oauth", "got token:$resp")
         // todo: error handling
         accessToken = resp.accessToken
         if (resp.refreshToken.isNotEmpty()) {
