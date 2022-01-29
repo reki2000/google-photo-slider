@@ -2,6 +2,7 @@ package jp.outlook.rekih.googlephotoslider
 
 import android.graphics.Bitmap
 import android.os.Bundle
+import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import android.widget.ImageView
@@ -25,7 +26,9 @@ class SlideShowActivity : AppCompatActivity() {
     private lateinit var nextImageView: ImageView
     private lateinit var currentImageView: ImageView
 
-    // TODO: 縦長の写真のみ、設定値に基づいてズームして表示 ZOOM_FOR_PORTLAIT = 1.3 など
+    // 縦長の写真・動画のみズームして表示
+    private var zoomPortrait = true
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -102,9 +105,27 @@ class SlideShowActivity : AppCompatActivity() {
         binding.dateText.text = caption
 
         nextImageView.apply {
-            setImageBitmap(bitmap)
             alpha = 0f
             animate().alpha(1f).setDuration(500)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            setImageBitmap(bitmap)
+            if (zoomPortrait) {
+                // 動画でもたいおうしたい
+                val scale =
+                    if (bitmap.height > bitmap.width * 1.5f) 1.5f else if (bitmap.height > bitmap.width * 1.2f) 1.2f else 1.0f
+                Log.i("slideshow", "scale: $scale")
+                // 左上座標の補正が必要
+                val centerX = width / 2
+                val centerY = height / 2
+                val top = centerY - bitmap.height * scale / 2
+                val left = centerX - bitmap.width * scale / 2
+                val m = imageMatrix
+                m.postScale(scale, scale)
+                m.postTranslate(top, left);
+                scaleType = ImageView.ScaleType.MATRIX
+                imageMatrix = m
+                invalidate()
+            }
         }
         currentImageView.apply {
             alpha = 1f
@@ -163,6 +184,10 @@ class SlideShowActivity : AppCompatActivity() {
             }
             KeyEvent.KEYCODE_BACK -> {
                 finish()
+                true
+            }
+            KeyEvent.KEYCODE_SETTINGS -> {
+                zoomPortrait = !zoomPortrait
                 true
             }
             else -> super.onKeyDown(keyCode, event)
