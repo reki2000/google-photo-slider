@@ -10,9 +10,11 @@ import kotlinx.coroutines.launch
 
 class AlbumSelect : ViewModel() {
     val albumList: MutableLiveData<List<Album>> by lazy { MutableLiveData<List<Album>>() }
+    val loading: MutableLiveData<Boolean> = MutableLiveData<Boolean>(true);
 
     fun loadAlbumList() {
         viewModelScope.launch {
+            loading.value = true
             val albums = GooglePhotoApi.getAlbumList()
                 .filter { it.mediaItemsCount.isNotEmpty() }
                 .map {
@@ -21,6 +23,7 @@ class AlbumSelect : ViewModel() {
                 }
                 .toList()
             albumList.value = albums
+            loading.value = false
         }
     }
 }

@@ -24,7 +24,7 @@ class SlideShow : ViewModel() {
     var movieEnded = false
 
     val showImage: MutableLiveData<Pair<Bitmap, String>> by lazy { MutableLiveData<Pair<Bitmap, String>>() }
-    val startMovie: MutableLiveData<String> by lazy { MutableLiveData<String>() }
+    val startMovie: MutableLiveData<Pair<String, String>> by lazy { MutableLiveData<Pair<String, String>>() }
     val prepareMovie: MutableLiveData<String> by lazy { MutableLiveData<String>() }
 
     private val iso8601DateFormat =
@@ -105,7 +105,9 @@ class SlideShow : ViewModel() {
 
                     item = waitUntilContentsEnded()
 
-                    startMovie.value = ""
+                    val dateText = iso8601DateFormat.parse(item.mediaMetadata.creationTime)
+                        ?.let { japaneseDateFormat.format(it) } ?: ""
+                    startMovie.value = Pair("", dateText)
                     waitUntilContentsEnded = waitUntilMovieEnded
                 } else {
                     val bitmap = ExternalContents.loadImageBitmap(item.baseUrl)

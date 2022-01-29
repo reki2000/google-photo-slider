@@ -54,6 +54,9 @@ class AlbumSelectActivity : AppCompatActivity() {
             Log.i("albumselect", "got albumlist:$albums")
             albumListAdapter.submitList(albums)
         })
+        albumSelect.loading.observe(this, { loading ->
+            binding.circularIndicator.visibility = if (loading) View.VISIBLE else View.INVISIBLE
+        })
 
         // スプラッシュ画像消去
         binding.splashImageview.setImageResource(0)

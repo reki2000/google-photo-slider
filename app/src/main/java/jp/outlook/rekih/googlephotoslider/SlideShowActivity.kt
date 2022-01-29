@@ -132,7 +132,6 @@ class SlideShowActivity : AppCompatActivity() {
             animate().alpha(0f).setDuration(500)
         }
 
-        binding.dateText.visibility = View.VISIBLE
         nextImageView.visibility = View.VISIBLE
         currentImageView.visibility = View.VISIBLE
 
@@ -150,13 +149,14 @@ class SlideShowActivity : AppCompatActivity() {
         }
     }
 
-    private val startMovie = Observer<String> { _ ->
+    private val startMovie = Observer<Pair<String, String>> { (_, caption) ->
         hideSystemUI()
         binding.fullscreenContent.visibility = View.INVISIBLE
         binding.fullscreenContent2.visibility = View.INVISIBLE
         currentImageView.setImageResource(0)
 
-        binding.dateText.visibility = View.INVISIBLE
+        binding.dateText.text = caption
+
         binding.playerView.visibility = View.VISIBLE
         player.apply {
             seekToNextWindow()
