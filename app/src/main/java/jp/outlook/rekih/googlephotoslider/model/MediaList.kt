@@ -15,11 +15,34 @@ class MediaList(val fetchNext: suspend () -> List<MediaItem>) {
         return items[itemIndex]
     }
 
+    suspend fun prevMonth(): MediaItem {
+        val date = prev().mediaMetadata.creationTime.substring(0, 7)
+        while (itemIndex != 0) {
+            val item = prev()
+            if (item.mediaMetadata.creationTime.substring(0, 7) != date) {
+                break
+            }
+        }
+        return current()
+    }
+
+    suspend fun nextMonth(): MediaItem {
+        val date = current().mediaMetadata.creationTime.substring(0, 7)
+        while (itemIndex != 0) {
+            val item = next()
+            if (item.mediaMetadata.creationTime.substring(0, 7) != date) {
+                break
+            }
+        }
+        return current()
+    }
+
+
     suspend fun prevDate(): MediaItem {
         val date = prev().mediaMetadata.creationTime.substring(0, 10)
         while (itemIndex != 0) {
             val item = prev()
-            if (item.mediaMetadata.creationTime.substring(0,10) != date) {
+            if (item.mediaMetadata.creationTime.substring(0, 10) != date) {
                 break
             }
         }

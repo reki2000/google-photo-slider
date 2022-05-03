@@ -49,19 +49,34 @@ class SlideShow : ViewModel() {
         }
     }
 
-    fun forwardMuch() {
+    fun forwardDay() {
         viewModelScope.launch {
             mediaList.nextDate()
             interrupt()
         }
     }
 
-    fun rewindMuch() {
+    fun rewindDay() {
         viewModelScope.launch {
             mediaList.prevDate()
             interrupt()
         }
     }
+
+    fun forwardMonth() {
+        viewModelScope.launch {
+            mediaList.nextMonth()
+            interrupt()
+        }
+    }
+
+    fun rewindMonth() {
+        viewModelScope.launch {
+            mediaList.prevMonth()
+            interrupt()
+        }
+    }
+
 
     fun stop() {
         running = false

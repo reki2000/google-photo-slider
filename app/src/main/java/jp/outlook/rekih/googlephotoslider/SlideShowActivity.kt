@@ -27,7 +27,7 @@ class SlideShowActivity : AppCompatActivity() {
     private lateinit var currentImageView: ImageView
 
     // 縦長の写真・動画のみズームして表示
-    private var zoomPortrait = true
+    private var zoomPortrait = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -170,16 +170,24 @@ class SlideShowActivity : AppCompatActivity() {
                 slideShow.forward()
                 true
             }
+            KeyEvent.KEYCODE_BUTTON_R1 -> {
+                slideShow.forwardDay()
+                true
+            }
             KeyEvent.KEYCODE_DPAD_DOWN -> {
-                slideShow.forwardMuch()
+                slideShow.forwardMonth()
                 true
             }
             KeyEvent.KEYCODE_DPAD_LEFT -> {
                 slideShow.rewind()
                 true
             }
+            KeyEvent.KEYCODE_BUTTON_L1 -> {
+                slideShow.rewindMonth()
+                true
+            }
             KeyEvent.KEYCODE_DPAD_UP -> {
-                slideShow.rewindMuch()
+                slideShow.rewindDay()
                 true
             }
             KeyEvent.KEYCODE_BACK -> {
