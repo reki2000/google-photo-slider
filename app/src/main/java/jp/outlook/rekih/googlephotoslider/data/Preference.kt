@@ -31,12 +31,12 @@ object Preference {
             putString(REFRESH_TOKEN_PREF_KEY, token)
             apply()
         }
-        Log.i("Preference", "stored token $token")
+        Log.i("Preference", "stored refresh token")
     }
 
     fun getRefreshToken(): String {
         val refreshToken = prefs.getString(REFRESH_TOKEN_PREF_KEY, "") ?: ""
-        Log.i("Preference", "stored token ${refreshToken}")
+        Log.i("Preference", "refresh token exists: ${refreshToken.isNotEmpty()}")
         return refreshToken
     }
 }
