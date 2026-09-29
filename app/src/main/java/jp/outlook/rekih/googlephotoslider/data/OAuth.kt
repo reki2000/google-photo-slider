@@ -16,6 +16,7 @@ import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
+import java.io.IOException
 import java.net.InetAddress
 
 const val CLIENT_ID = BuildConfig.googlePhotoApiClientId
@@ -31,6 +32,9 @@ object OAuth {
     private var oAuthCode: String = ""
     private var accessToken: String = ""
     private var refreshToken: String = ""
+
+    private val decoder = Json { ignoreUnknownKeys = true }
+    private val client = OkHttpClient()
 
     fun authorizeWithBrowser(browserInvoker: (String)->Unit) {
         startWebServer()
@@ -66,8 +70,21 @@ object OAuth {
         if (refreshToken == "") {
             return true
         }
+        return try {
+            storeAccessTokenByRefreshToken()
+            false
+        } catch (e: Exception) {
+            // リフレッシュトークンが失効・取り消しされている場合はブラウザ認証からやり直す
+            Log.w("OAuth", "failed to refresh access token", e)
+            refreshToken = ""
+            Preference.storeRefreshToken("")
+            true
+        }
+    }
+
+    suspend fun refreshAccessToken(): String {
         storeAccessTokenByRefreshToken()
-        return false
+        return accessToken
     }
 
     suspend fun waitAccessToken(): String {
@@ -109,24 +126,30 @@ object OAuth {
     }
 
     private suspend fun getAccessToken(body: FormBody): AuthResponse = withContext(Dispatchers.IO) {
-        val client = OkHttpClient()
         val tokenUrl = "https://www.googleapis.com/oauth2/v4/token"
-        val response = client.newCall(Request.Builder().url(tokenUrl).post(body).build()).execute()
-        val responseBody = response.body?.string() ?: ""
-        Log.i("OAuth", "got token: $response $responseBody")
-        val json = Json.decodeFromString<AuthResponse>(responseBody)
-        json
+        client.newCall(Request.Builder().url(tokenUrl).post(body).build()).execute().use { response ->
+            // レスポンスボディにはトークンが含まれるためログに出さない
+            Log.i("OAuth", "got token response: $response")
+            if (!response.isSuccessful) {
+                throw IOException("token request failed: $response")
+            }
+            decoder.decodeFromString<AuthResponse>(response.body?.string() ?: "")
+        }
     }
 
     private fun handleRequest(req: RecordedRequest): MockResponse {
         val url = req.requestUrl
         if (url != null) {
-            Log.i("OAuth", "got url: ${url.toString()}")
+            Log.i("OAuth", "got request: ${url.encodedPath}")
             val path = url.pathSegments
             if (path == listOf("oauth","callback")) {
                 oAuthCode = parseCode(url.toString())
                 CoroutineScope(Dispatchers.IO).launch {
-                    storeAccessTokenByCode(oAuthCode)
+                    try {
+                        storeAccessTokenByCode(oAuthCode)
+                    } catch (e: Exception) {
+                        Log.e("OAuth", "failed to get access token by code", e)
+                    }
                 }
             }
         }
@@ -136,18 +159,17 @@ object OAuth {
         }
     }
 
+    // ブラウザからのリダイレクトより前に起動が完了している必要があるため同期的に起動する
     private fun startWebServer() {
-        CoroutineScope(Dispatchers.IO).launch {
-            val server = MockWebServer()
-            // SAMで書きたいが今のところ書けない
-            // server.dispatcher = { request: RecordedRequest -> handleRequest(request) }
-            server.dispatcher = object: Dispatcher() {
-                override fun dispatch(request: RecordedRequest): MockResponse {
-                    return handleRequest(request)
-                }
+        val server = MockWebServer()
+        // SAMで書きたいが今のところ書けない
+        // server.dispatcher = { request: RecordedRequest -> handleRequest(request) }
+        server.dispatcher = object: Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                return handleRequest(request)
             }
-            server.start(InetAddress.getByName(REDIRECT_HOST), REDIRECT_PORT)
         }
+        server.start(InetAddress.getByName(REDIRECT_HOST), REDIRECT_PORT)
     }
 }
 

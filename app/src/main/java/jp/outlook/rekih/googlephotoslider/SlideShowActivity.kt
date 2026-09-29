@@ -2,12 +2,14 @@ package jp.outlook.rekih.googlephotoslider
 
 import android.graphics.Bitmap
 import android.os.Bundle
+import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import android.widget.ImageView
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
+import com.google.android.exoplayer2.PlaybackException
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.SimpleExoPlayer
 import jp.outlook.rekih.googlephotoslider.databinding.ActivitySlideShowBinding
@@ -45,12 +47,25 @@ class SlideShowActivity : AppCompatActivity() {
             .setPauseAtEndOfMediaItems(true)
             .build()
         player.apply {
+            // isPlaying はバッファリングや stop() でも false になるため、終了判定には使わない
             addListener(object: Player.Listener {
-                override fun onIsPlayingChanged(isPlaying: Boolean) {
-                    if (!isPlaying) {
+                override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                    if (!playWhenReady && reason == Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM) {
                         slideShow.notifyMovieEnded()
                     }
-                }})
+                }
+
+                override fun onPlaybackStateChanged(state: Int) {
+                    if (state == Player.STATE_ENDED) {
+                        slideShow.notifyMovieEnded()
+                    }
+                }
+
+                override fun onPlayerError(error: PlaybackException) {
+                    Log.w("SlideShow", "movie playback error", error)
+                    slideShow.notifyMovieEnded()
+                }
+            })
             // todo: 初回動画再生に時間がかからないようにする（初期化をする？）
             stop()
             clearMediaItems()
@@ -69,6 +84,11 @@ class SlideShowActivity : AppCompatActivity() {
             slideShow.prepare(albumId)
             slideShow.start()
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        player.release()
     }
 
     override fun onStop() {
@@ -138,8 +158,18 @@ class SlideShowActivity : AppCompatActivity() {
         binding.dateText.visibility = View.INVISIBLE
         binding.playerView.visibility = View.VISIBLE
         player.apply {
-            seekToNextWindow()
-            play()
+            // 先読みで追加した最後のアイテムを再生し、それより前のアイテムはプレイリストから除く
+            val last = mediaItemCount - 1
+            if (last >= 0) {
+                seekToDefaultPosition(last)
+                if (last > 0) {
+                    removeMediaItems(0, last)
+                }
+                if (playbackState == Player.STATE_IDLE) {
+                    prepare()
+                }
+                play()
+            }
         }
     }
 
