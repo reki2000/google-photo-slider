@@ -4,6 +4,7 @@ import android.util.Log
 import jp.outlook.rekih.googlephotoslider.model.Album
 import jp.outlook.rekih.googlephotoslider.model.Albums
 import jp.outlook.rekih.googlephotoslider.model.MediaItem
+import jp.outlook.rekih.googlephotoslider.model.MediaItemResults
 import jp.outlook.rekih.googlephotoslider.model.MediaItems
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -27,10 +28,6 @@ object GooglePhotoApi {
 
     private var accessToken: String = ""
 
-    private var albumId = ""
-    private var nextPageToken: String? = null
-    private var completed = false
-
     private suspend fun waitAccessToken() {
         while (accessToken == "") {
             delay(100)
@@ -41,12 +38,6 @@ object GooglePhotoApi {
     fun setAccessToken(token: String): GooglePhotoApi {
         accessToken = token
         return this
-    }
-
-    fun switchAlbumTo(id: String) {
-        albumId = id
-        nextPageToken = null
-        completed = false
     }
 
     // アクセストークンは1時間で失効するため、401 の場合はリフレッシュして1回だけリトライする
@@ -86,40 +77,31 @@ object GooglePhotoApi {
         albums
     }
 
-    suspend fun getMediaItem(id: String): MediaItem = withContext(Dispatchers.IO) {
-        val url = "https://photoslibrary.googleapis.com/v1/mediaItems".toHttpUrlOrNull()!!
+    // 最大50件
+    suspend fun batchGetMediaItems(ids: List<String>): List<MediaItem> = withContext(Dispatchers.IO) {
+        val urlBuilder = "https://photoslibrary.googleapis.com/v1/mediaItems:batchGet".toHttpUrlOrNull()!!
             .newBuilder()
-            .addPathSegment(id)
-            .build()
+        ids.forEach { urlBuilder.addQueryParameter("mediaItemIds", it) }
+        val url = urlBuilder.build()
         val responseBody = execute { it.url(url).get() }
-        decoder.decodeFromString<MediaItem>(responseBody)
+        decoder.decodeFromString<MediaItemResults>(responseBody).mediaItemResults.mapNotNull { it.mediaItem }
     }
 
-    suspend fun getNextMediaItems(): List<MediaItem> = withContext(
+    suspend fun searchMediaItems(albumId: String, pageToken: String?): MediaItems = withContext(
         Dispatchers.IO
     ) {
-        val mediaItems = mutableListOf<MediaItem>()
-
-        if (!completed) {
-            val url =
-                "https://photoslibrary.googleapis.com/v1/mediaItems:search".toHttpUrlOrNull()!!
-            val query = buildJsonObject {
-                put("albumId", albumId)
-                put("pageSize", MEDIA_ITEMS_FETCH_SIZE)
-                nextPageToken?.let { put("pageToken", it) }
-            }
-            val body =
-                query.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
-            val responseBody = execute { it.url(url).post(body) }
-            val json = decoder.decodeFromString<MediaItems>(responseBody)
-
-            mediaItems += json.mediaItems
-            nextPageToken = json.nextPageToken
-            if (nextPageToken == null) {
-                completed = true
-            }
-            Log.i("Api", "got ${json.mediaItems.size} items, nextpagetoken ${nextPageToken}")
+        val url =
+            "https://photoslibrary.googleapis.com/v1/mediaItems:search".toHttpUrlOrNull()!!
+        val query = buildJsonObject {
+            put("albumId", albumId)
+            put("pageSize", MEDIA_ITEMS_FETCH_SIZE)
+            pageToken?.let { put("pageToken", it) }
         }
-        mediaItems
+        val body =
+            query.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
+        val responseBody = execute { it.url(url).post(body) }
+        val json = decoder.decodeFromString<MediaItems>(responseBody)
+        Log.i("Api", "got ${json.mediaItems.size} items, nextpagetoken ${json.nextPageToken}")
+        json
     }
 }

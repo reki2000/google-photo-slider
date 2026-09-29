@@ -40,6 +40,17 @@ data class MediaItem(
 }
 
 @Serializable
+data class MediaItemResults(
+    val mediaItemResults: List<MediaItemResult> = listOf(),
+)
+
+// 取得に失敗したアイテムは mediaItem が無く status が入る
+@Serializable
+data class MediaItemResult(
+    val mediaItem: MediaItem? = null,
+)
+
+@Serializable
 data class MediaMetadata(
     val creationTime: String = "",
 )
